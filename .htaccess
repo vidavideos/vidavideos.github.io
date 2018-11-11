@@ -1,128 +1,252 @@
-#<IfModule mod_security.c>
-#    secfilterengine off
-#    secfilterscanPOST off
-#</IfModule>
-
+# BEGIN Expires Don't forget to enable mod_headers and mod_expires, you can do so by running a2enmod rewrite and a2enmod headers
+<ifModule mod_expires.c>
+    ExpiresActive On
+    ExpiresDefault "access plus 1 seconds"
+    ExpiresByType text/html "access plus 1 seconds"
+    ExpiresByType image/gif "access plus 2592000 seconds"
+    ExpiresByType image/jpeg "access plus 2592000 seconds"
+    ExpiresByType image/png "access plus 2592000 seconds"
+    ExpiresByType text/css "access plus 604800 seconds"
+    ExpiresByType text/javascript "access plus 216000 seconds"
+    ExpiresByType application/x-javascript "access plus 216000 seconds"
+</ifModule>
+<Files routes.php>
+Order Allow,Deny
+Deny from all
+</Files>
+<Files PayPal.log>
+Order Allow,Deny
+Deny from all
+</Files>
+<Files youphptube.log>
+Order Allow,Deny
+Deny from all
+</Files>
+<Files youphptube.js.log>
+Order Allow,Deny
+Deny from all
+</Files>
+# Disable directory browsing
 Options All -Indexes
-FileETag MTime Size
-Options +FollowSymlinks
-RewriteEngine on
+# END Expires
+# BEGIN Caching
+<ifModule mod_headers.c>
+    Header set Access-Control-Allow-Origin: *
+    <filesMatch "\.(ico|pdf|flv|jpg|jpeg|png|gif|swf)$">
+        Header set Cache-Control "max-age=2592000, public"
+    </filesMatch>
+    <filesMatch "\.(css)$">
+        Header set Cache-Control "max-age=604800, public"
+    </filesMatch>
+    <filesMatch "\.(js)$">
+        Header set Cache-Control "max-age=216000, private"
+    </filesMatch>
+    <filesMatch "\.(xml|txt)$">
+        Header set Cache-Control "max-age=216000, public, must-revalidate"
+    </filesMatch>
+    <filesMatch "\.(html|htm|php)$">
+        Header set Cache-Control "max-age=1, private, must-revalidate"
+    </filesMatch>
+</ifModule>
+# END Caching
+<IfModule mod_rewrite.c>
+    RewriteEngine on
 
-<FilesMatch "\.(db|inc|tmpl|h|ihtml|sql|ini|configuration|config|class|bin|spd|theme|module|cfg|cpl|tmp|log|err|inc.php|class.php)$">
-order allow,deny
-satisfy all
-</FilesMatch>
+    #main Files
+    RewriteRule    ^index.php$ view/index.php    [NC,L]
+    #RewriteRule    ^index.php$ /view/index.php    [NC,L]
+    #RewriteRule    ^$ view/    [NC,L]
+    RewriteRule    ^bootstrap/(.+)$ view/bootstrap/$1 [NC,L]
+    RewriteRule    ^js/(.+)$ view/js/$1 [NC,L]
+    RewriteRule    ^css/(.+)$ view/css/$1 [NC,L]
+    RewriteRule    ^img/(.+)$ view/img/$1 [NC,L]
+    RewriteRule    ^videos/fonts/(.+)$ view/bootstrap/fonts/$1 [NC,L]
+    RewriteRule    ^page/([0-9]+)/?$ view/?page=$1    [QSA]
+    RewriteRule    ^videoOnly/?$ view/?type=video    [NC,L]
+    RewriteRule    ^audioOnly/?$ view/?type=audio    [NC,L]
+    RewriteRule    ^download$ view/downloadExternalVideo.php    [NC,L]
+    RewriteRule    ^info$ view/info.php    [NC,L]
+    RewriteRule    ^downloadNow$ objects/downloadVideo.php    [NC,L]
+    RewriteRule    ^getDownloadProgress$ objects/downloadVideoProgress.php    [NC,L]
+    RewriteRule    ^status$ objects/status.json.php    [NC,L]
+    RewriteRule    ^menu/([A-Za-z0-9-_.]+)/? plugin/TopMenu/seo.php?menuSeoUrlItem=$1    [QSA,L]
 
-########## Begin - Rewrite rules to block out some common exploits
-#                              
-# Block out any script trying to set a mosConfig value through the URL
-RewriteCond %{QUERY_STRING} mosConfig_[a-zA-Z_]{1,21}(=|\%3D) [OR]
-# Block out any script trying to base64_encode crap to send via URL
-RewriteCond %{QUERY_STRING} base64_encode.*\(.*\) [OR]
-# Block out any script that includes a <script> tag in URL
-RewriteCond %{QUERY_STRING} (\<|%3C).*script.*(\>|%3E) [NC,OR]
-# Block out any script trying to set a PHP GLOBALS variable via URL
-RewriteCond %{QUERY_STRING} GLOBALS(=|\[|\%[0-9A-Z]{0,2}) [OR]
-# Block out any script trying to modify a _REQUEST variable via URL
-RewriteCond %{QUERY_STRING} _REQUEST(=|\[|\%[0-9A-Z]{0,2})
-# Send all blocked request to homepage with 403 Forbidden error!
-#RewriteRule ^(.*)$ index.php [L]
-RewriteRule ^([^.]*)/?$ index.php [L]
-# 
-########## End - Rewrite rules to block out some common exploits
+    RewriteRule    ^about$ view/about.php    [NC,L]
+    RewriteRule    ^contact$ view/contact.php    [NC,L]
+    RewriteRule    ^sendEmail$ objects/sendEmail.json.php    [NC,L]
+    RewriteRule    ^captcha$ objects/getCaptcha.php    [NC,L]
+    RewriteRule    ^monitor/(.+)$ objects/ServerMonitor/$1    [NC,L]
+    RewriteRule    ^videosList$ view/videosList.php    [NC,L]
+    RewriteRule    ^videosList/video/([A-Za-z0-9-_.]+)/page/([0-9]+)/?$ view/videosList.php?videoName=$1&page=$2    [QSA]
+    RewriteRule    ^videosList/cat/([A-Za-z0-9-]+)/video/([A-Za-z0-9-_.]+)/page/([0-9]+)/?$ view/videosList.php?catName=$1&videoName=$2&page=$3    [QSA]
 
-
-RewriteEngine on
-#
-#
-#
-#URL Rewriting for Videos
-RewriteRule ^videos/(.*)/(.*)/(.*)/(.*)/(.*) videos.php?cat=$1&sort=$3&time=$4&page=$5&seo_cat_name=$2 [L]
-RewriteRule ^videos/([0-9]+) videos.php?page=$1 [L]
-RewriteRule ^videos/?$ videos.php?%{QUERY_STRING} [L]
-RewriteRule ^video/(.*)/(.*) watch_video.php?v=$1&%{QUERY_STRING} [L]
-#Alternate watch video links
-RewriteRule ^(.*)\_v([0-9]+) watch_video.php?v=$2&%{QUERY_STRING} [L]
-RewriteRule ^video/([0-9]+)_(.*) watch_video.php?v=$1&%{QUERY_STRING} [L]
-
-
-#
-#Users, Channel & Management
-#
-
-RewriteRule ^channels/(.*)/(.*)/(.*)/(.*)/(.*) channels.php?cat=$1&sort=$3&time=$4&page=$5&seo_cat_name=$2 [L]
-RewriteRule ^channels/([0-9]+) channels.php?page=$1 [L]
-RewriteRule ^channels/?$ channels.php [L]
-RewriteRule ^members/?$								channels.php [nc]
-RewriteRule ^users/?$								channels.php [nc]
-RewriteRule ^user/(.*)						view_channel.php?user=$1 [nc]
-RewriteRule ^channel/(.*)					view_channel.php?user=$1 [nc]
-
-
-RewriteRule ^my_account					myaccount.php [nc]
-
+    #for the category name
+    RewriteRule    ^cat/([A-Za-z0-9-]+)/?$ view/?catName=$1    [NC,L,QSA]
+    RewriteRule    ^cat/([A-Za-z0-9-]+)/page/([0-9]+)/?$ view/?catName=$1&page=$2    [NC,L,QSA]
 
 
-#Pages
-RewriteRule ^page/([0-9]+)/(.*)						view_page.php?pid=$1 [nc]
-#
-#Miscellenous
-RewriteRule ^search/result/?$							search_result.php [nc]
-RewriteRule ^upload/?$									upload.php [nc]
-RewriteRule ^contact/?$								contact.php [nc]
-RewriteRule ^categories/?$								categories.php [nc]
+    #for the video name
+    RewriteRule    ^video/([A-Za-z0-9-_.]+)/?$ view/?videoName=$1    [QSA]
+    RewriteRule    ^video/([A-Za-z0-9-_.]+)/page/([0-9]+)/??$ view/?videoName=$1&page=$2    [QSA]
+    RewriteRule    ^v/([0-9]+)/?$ view/?v=$1    [QSA]
+    RewriteRule    ^v/([0-9]+)/page/([0-9]+)/??$ view/?v=$1&page=$2     [QSA]
 
-#Group Section
+    #for the video name
+    RewriteRule    ^cat/([A-Za-z0-9-]+)/video/([A-Za-z0-9-_.]+)/?$ view/?catName=$1&videoName=$2    [QSA]
+    RewriteRule    ^cat/([A-Za-z0-9-]+)/video/([A-Za-z0-9-_.]+)/page/([0-9]+)/?$ view/?catName=$1&videoName=$2&page=$3   [QSA]
+    #for the embeded video name
+    RewriteRule    ^videoEmbeded/([A-Za-z0-9-_.]+)/?$ view/videoEmbeded.php?videoName=$1    [QSA]
+    RewriteRule    ^videoEmbed/([A-Za-z0-9-_.]+)/?$ view/videoEmbeded.php?videoName=$1    [QSA]
+    RewriteRule    ^vEmbed/([0-9]+)/?$ view/videoEmbeded.php?v=$1    [QSA]
 
-RewriteRule ^group/([a-zA-Z0-9].+)					view_group.php?url=$1&%{QUERY_STRING} [L]
+    RewriteRule    ^plugin/([A-Za-z0-9-_.]+)/(.*)?$ plugin/$1/$2    [NC,L]
 
-RewriteRule ^view_topic/([a-zA-Z0-9].+)_tid_([0-9]+)					view_topic.php?tid=$2&%{QUERY_STRING} [L]
-RewriteRule ^groups/(.*)/(.*)/(.*)/(.*)/(.*) groups.php?cat=$1&sort=$3&time=$4&page=$5&seo_cat_name=$2 [L]
-RewriteRule ^groups/([0-9]+) groups.php?page=$1 [L]
-RewriteRule ^groups/?$ groups.php [L]
-RewriteRule ^create_group create_group.php [L]
+    RewriteRule    ^upload$ view/mini-upload-form/    [NC,L]
+    RewriteRule    ^fileUpload$ view/mini-upload-form/upload.php    [NC,L]
+    RewriteRule    ^uploadPoster/([0-9]+)/(jpg|gif)$ objects/uploadPoster.php?video_id=$1&type=$2    [NC,L]
 
-#Collection Section
-RewriteRule ^collections/(.*)/(.*)/(.*)/(.*)/(.*) 		collections.php?cat=$1&sort=$3&time=$4&page=$5&seo_cat_name=$2 [L]
-RewriteRule ^collections/([0-9]+) collections.php?page=$1 [L]
-RewriteRule ^collections/?$ 								collections.php [L]
-RewriteRule ^photos/(.*)/(.*)/(.*)/(.*)/(.*) 			photos.php?cat=$1&sort=$3&time=$4&page=$5&seo_cat_name=$2 [L]
-RewriteRule ^photos/([0-9]+) photos.php?page=$1 [L]
-RewriteRule ^photos/?$ 									photos.php [L]
-RewriteRule ^collection/(.*)/(.*)/(.*)					view_collection.php?cid=$1&type=$2&page=$3 [L]
+    #edit your own user
+    RewriteRule    ^user$ view/user.php    [NC,L]
 
-#Photo Section
-RewriteRule ^item/(.*)/(.*)/(.*)/(.*) 					view_item.php?item=$3&type=$1&collection=$2 [L]
-RewriteRule ^photo_upload/(.*) 							photo_upload.php?collection=$1 [L]
-RewriteRule ^photo_upload/?$								photo_upload.php [L]
-#
-RewriteRule ^sitemap.xml$ sitemap.php
-RewriteRule ^signup/?$ signup.php
-
-#Error Pages
-ErrorDocument 404 /404.php
-ErrorDocument 403 /403.php
+    #manager user
+    RewriteRule    ^users$ view/managerUsers.php    [NC,L]
+    RewriteRule    ^users.json$ objects/users.json.php    [NC,L]
+    RewriteRule    ^updateUser$ objects/userUpdate.json.php    [NC,L]
+    RewriteRule    ^savePhoto$ objects/userSavePhoto.php    [NC,L]
+    RewriteRule    ^saveBackground$ objects/userSaveBackground.php    [NC,L]
+    RewriteRule    ^addNewUser$ objects/userAddNew.json.php    [NC,L]
+    RewriteRule    ^deleteUser$ objects/userDelete.json.php    [NC,L]
+    RewriteRule    ^recoverPass$ objects/userRecoverPass.php    [NC,L]
+    RewriteRule    ^saveRecoverPassword$ objects/userRecoverPassSave.json.php    [NC,L]
+    RewriteRule    ^signUp$ view/signUp.php    [NC,L]
+    RewriteRule    ^createUser$ objects/userCreate.json.php    [NC,L]
 
 
+    RewriteRule    ^usersGroups$ view/managerUsersGroups.php    [NC,L]
+    RewriteRule    ^usersGroups.json$ objects/usersGroups.json.php    [NC,L]
+    RewriteRule    ^addNewUserGroups$ objects/userGroupsAddNew.json.php    [NC,L]
+    RewriteRule    ^deleteUserGroups$ objects/userGroupsDelete.json.php    [NC,L]
 
-##################CB Beats Plugin#########################
-#Manage and Delete
-RewriteRule ^manage_audios/?$ module.php?s=audios&p=manage [L]
-RewriteRule ^manage_audios/delete/(.*) 			module.php?s=audios&p=manage&del_beat=$1 [L]
+    #manager category
+    RewriteRule    ^categories$ view/managerCategories.php    [NC,L]
+    RewriteRule    ^categories.json$ objects/categories.json.php    [NC,L]
+    RewriteRule    ^addNewCategory$ objects/categoryAddNew.json.php    [NC,L]
+    RewriteRule    ^deleteCategory$ objects/categoryDelete.json.php    [NC,L]
 
-#Edit
-RewriteRule ^manage_audios/edit/audio/(.*) 			module.php?s=audios&p=edit&audio=$1 [L]
+    #manager plugin
+    RewriteRule    ^plugins$ view/managerPlugins.php    [NC,L]
+    RewriteRule    ^plugins.json$ objects/plugins.json.php    [NC,L]
+    RewriteRule    ^pluginsAvailable.json$ objects/pluginsAvailable.json.php    [NC,L]
+    RewriteRule    ^pluginImport.json$ objects/pluginImport.json.php    [NC,L]
+    RewriteRule    ^switchPlugin$ objects/pluginSwitch.json.php    [NC,L]
+    RewriteRule    ^addDataObjectPlugin.json$ objects/pluginAddDataObject.json.php    [NC,L]
+    RewriteRule    ^runDBScriptPlugin.json$ objects/pluginRunDatabaseScript.json.php    [NC,L]
 
-#List
-RewriteRule ^audios/?$ 			module.php?s=audios&p=list [L]
-######################Ending Audio Section#################
+    #manager playList
+    RewriteRule    ^playLists.json$ objects/playlists.json.php    [NC,L]
+    RewriteRule    ^playListsVideos.json$ objects/playlistsVideos.json.php    [NC,L]
+    RewriteRule    ^playListsFromUser.json/([0-9]+)/?$ objects/playlistsFromUser.json.php?users_id=$1    [NC,L]
+    RewriteRule    ^addNewPlayList$ objects/playlistAddNew.json.php    [NC,L]
+    RewriteRule    ^playListAddVideo.json$ objects/playListAddVideo.json.php    [NC,L]
+    RewriteRule    ^playlist/([0-9]+)/([0-9]+)/?$ view/?playlist_id=$1&playlist_index=$2    [NC,L]
+    RewriteRule    ^playlist/([0-9]+)/?$ view/?playlist_id=$1    [NC,L]
+    RewriteRule    ^removeVideoFromPlaylist/?$ objects/playlistRemoveVideo.php    [NC,L]
+    RewriteRule    ^removePlaylist/?$ objects/playlistRemove.php    [NC,L]
+    RewriteRule    ^renamePlaylist/?$ objects/playlistRename.php    [NC,L]
+    RewriteRule    ^sortPlaylist/?$ objects/playlistSort.php    [NC,L]
+    RewriteRule    ^channel/([^/]+)/?$ view/channel.php?channelName=$1    [QSA]
+    RewriteRule    ^channel/?$ view/channel.php    [QSA]
+    RewriteRule    ^channels/?$ view/channels.php    [NC,L]
 
-########## End - Rewrite rules For SEO urls ######################
-RewriteRule ^rss$                           rss.php [nc]
-RewriteRule ^rss/([a-zA-Z0-9].+)$           rss.php?mode=$1&%{QUERY_STRING} [nc]
+    #manager videos
+    RewriteRule    ^orphanFiles$ view/orphanFiles.php    [NC,L]
+    RewriteRule    ^mvideos$ view/managerVideos.php    [NC,L]
+    RewriteRule    ^videos.json$ objects/videos.json.php    [NC,L]
+    RewriteRule    ^videosAndroid.json$ objects/videosAndroid.json.php    [NC,L]
+    RewriteRule    ^videoAndroid.json$ objects/videoAndroid.json.php    [NC,L]
+    RewriteRule    ^deleteVideo$ objects/videoDelete.json.php    [NC,L]
+    RewriteRule    ^addNewVideo$ objects/videoAddNew.json.php    [NC,L]
+    RewriteRule    ^refreshVideo$ objects/videoRefresh.json.php    [NC,L]
+    RewriteRule    ^setStatusVideo$ objects/videoStatus.json.php    [NC,L]
+    RewriteRule    ^setCategoryVideo$ objects/videoCategory.json.php    [NC,L]
+    RewriteRule    ^reencodeVideo$ objects/videoReencode.json.php    [NC,L]
+    RewriteRule    ^rotateVideo$ objects/videoRotate.json.php    [NC,L]
+    RewriteRule    ^addViewCountVideo$ objects/videoAddViewCount.json.php    [NC,L]
 
-########## End - Rewrite rules For SEO urls ######################
 
-RewriteRule	^([a-zA-Z0-9-]+)/?$ 	view_channel.php?uid=$1&seo_diret=yes [NS]
+    # Subscribes
+    RewriteRule    ^subscribes$ view/managerSubscribes.php    [NC,L]
+    RewriteRule    ^subscribes.json$ objects/subscribes.json.php    [NC,L]
+    RewriteRule    ^subscribe.json$ objects/subscribe.json.php    [NC,L]
+    RewriteRule    ^notifySubscribers.json$ objects/notifySubscribers.json.php    [NC,L]
 
-RewriteRule	^list/([0-9]+)/(.*)?$ 	view_playlist.php?list_id=$1 [NS]
+
+    RewriteRule    ^youPHPTubeQueueEncoder.json$ objects/youPHPTubeQueueEncoder.json.php    [NC,L]
+    RewriteRule    ^youPHPTubeEncoder.json$ objects/youPHPTubeEncoder.json.php    [NC,L]
+
+    #comment
+    RewriteRule    ^comments$ view/managerComments.php    [NC,L]
+    RewriteRule    ^saveComment$ objects/commentAddNew.json.php    [NC,L]
+    RewriteRule    ^comments.json/([0-9]+)$ objects/comments.json.php?video_id=$1    [NC,L]
+
+    RewriteRule    ^login$ objects/login.json.php    [NC,L]
+    RewriteRule    ^logoff$ objects/logoff.php    [NC,L]
+
+    RewriteRule    ^like$ objects/like.json.php?like=1    [QSA]
+    RewriteRule    ^dislike$ objects/like.json.php?like=-1    [QSA]
+
+
+    #manager configuration
+
+    RewriteRule    ^update/?$ view/update.php    [NC,L]
+    RewriteRule    ^siteConfigurations$ view/configurations.php    [NC,L]
+    RewriteRule    ^updateConfig$ objects/configurationUpdate.json.php    [NC,L]
+
+    RewriteRule    ^charts$ view/charts.php    [NC,L]
+
+    RewriteRule    ^help$ view/help.php    [NC,L]
+
+    # YouTube Sync
+    RewriteRule    ^youtubeUpload$ objects/youtubeUpload.json.php    [NC,L]
+
+    RewriteRule    ^googleAdView$ view/googleAdView.php    [NC,L]
+
+    RewriteRule    ^notifications.json$ objects/notifications.json.php    [NC,L]
+
+    # It must be before image not found
+    <IfModule mod_xsendfile.c>
+       RewriteRule    ^videos/([A-Za-z0-9-_.]+)$ view/xsendfile.php?file=$1    [QSA]
+    </IfModule>
+
+    # if image do not exists
+    RewriteCond %{REQUEST_URI} \.(jpg|jpeg|gif|png|ico)$ [NC]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule .*$ img/image404.php [NC,L]
+
+</IfModule>
+<IfModule mod_deflate.c>
+  # Compress HTML, CSS, JavaScript, Text, XML and fonts
+  AddOutputFilterByType DEFLATE application/javascript
+  AddOutputFilterByType DEFLATE application/rss+xml
+  AddOutputFilterByType DEFLATE application/vnd.ms-fontobject
+  AddOutputFilterByType DEFLATE application/x-font
+  AddOutputFilterByType DEFLATE application/x-font-opentype
+  AddOutputFilterByType DEFLATE application/x-font-otf
+  AddOutputFilterByType DEFLATE application/x-font-truetype
+  AddOutputFilterByType DEFLATE application/x-font-ttf
+  AddOutputFilterByType DEFLATE application/x-javascript
+  AddOutputFilterByType DEFLATE application/xhtml+xml
+  AddOutputFilterByType DEFLATE application/xml
+  AddOutputFilterByType DEFLATE font/opentype
+  AddOutputFilterByType DEFLATE font/otf
+  AddOutputFilterByType DEFLATE font/ttf
+  AddOutputFilterByType DEFLATE image/svg+xml
+  AddOutputFilterByType DEFLATE image/x-icon
+  AddOutputFilterByType DEFLATE text/css
+  AddOutputFilterByType DEFLATE text/html
+  AddOutputFilterByType DEFLATE text/javascript
+  AddOutputFilterByType DEFLATE text/plain
+  AddOutputFilterByType DEFLATE text/xml
+
+</IfModule>
